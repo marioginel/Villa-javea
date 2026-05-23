@@ -19,9 +19,12 @@ export default function VillaJaveaApp() {
 
   const [diaSeleccionado, setDiaSeleccionado] = useState(8);
 
-  // --- CONFIGURACIÓN DE FECHAS (Agosto) ---
+  // --- CONFIGURACIÓN DE FECHAS (Agosto 2026) ---
   const diasAgosto = Array.from({ length: 22 }, (_, i) => i + 8); // Del 8 al 29
-  const diasSemana = ['S', 'D', 'L', 'M', 'X', 'J', 'V'];
+  const diasSemana = ['S', 'D', 'L', 'M', 'X', 'J', 'V']; // 8 Ago 2026 es Sábado
+
+  // Colores para las reservas
+  const coloresReservas = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-sky-500'];
 
   // --- FUNCIONES ---
   const handleLogin = (e) => {
@@ -51,8 +54,9 @@ export default function VillaJaveaApp() {
     });
   };
 
-  const abrirModalReserva = (habitacion) => {
+  const abrirModalReserva = (habitacion, dia) => {
     setHabitacionSeleccionada(habitacion);
+    setNuevaReserva({ ...nuevaReserva, inicio: dia, fin: dia + 1 });
     setModalReserva(true);
   };
 
@@ -83,10 +87,10 @@ export default function VillaJaveaApp() {
   // --- PANTALLA PRINCIPAL ---
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      {/* 1. CABECERA: Foto de la casa */}
-      <div className="w-full h-56 md:h-80 bg-cover bg-center relative" style={{ backgroundImage: "url('https://alojamientos.marhenhomes.com/fotos/559597/16757650898fa4c3b772bb469046c827362a7fc972.jpg')" }}>
-        <div className="absolute inset-0 bg-black bg-opacity-30 flex items-end p-4">
-          <h1 className="text-white text-3xl font-bold shadow-sm">Villa La Golondrina</h1>
+      {/* 1. CABECERA: Foto de la casa (Asegúrate de subir image_1.png a la carpeta public/) */}
+      <div className="w-full h-56 md:h-80 bg-cover bg-center relative" style={{ backgroundImage: "url('/image_1.png')" }}>
+        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-end p-4">
+          <h1 className="text-white text-3xl font-bold shadow-md">Villa La Golondrina</h1>
         </div>
       </div>
 
@@ -94,55 +98,66 @@ export default function VillaJaveaApp() {
         
         {/* 2. CALENDARIO Y RESERVAS */}
         <div className="bg-white rounded-xl shadow p-4 overflow-hidden">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">📅 Reservas de Habitaciones</h2>
+          <h2 className="text-xl font-bold mb-4 text-gray-800">📅 Calendario de Habitaciones (Agosto)</h2>
           
           <div className="overflow-x-auto pb-4">
             <div className="min-w-[800px]">
               {/* Cabecera de días */}
-              <div className="grid grid-cols-[80px_repeat(22,_1fr)] gap-1 mb-2">
-                <div className="font-bold text-sm text-gray-500 flex items-end">Habitación</div>
+              <div className="grid grid-cols-[100px_repeat(22,_1fr)] gap-px mb-1">
+                <div className="font-bold text-sm text-gray-500 flex items-end pb-2">Habitación</div>
                 {diasAgosto.map((dia, index) => (
-                  <div key={dia} className="text-center text-xs font-semibold bg-gray-100 rounded p-1">
-                    <div className="text-gray-400">{diasSemana[(index + 6) % 7]}</div>
+                  <div key={dia} className="text-center text-xs font-semibold bg-gray-100 rounded-t p-1">
+                    <div className="text-gray-400">{diasSemana[index % 7]}</div>
                     <div className="text-gray-800 text-sm">{dia}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Filas de habitaciones */}
-              {[1, 2, 3, 4, 5].map(hab => (
-                <div key={hab} className="grid grid-cols-[80px_repeat(22,_1fr)] gap-1 mb-1 relative border-b pb-1 items-center">
-                  <div className="font-semibold text-sm bg-blue-100 text-blue-800 rounded p-2 text-center">
+              {/* Filas de habitaciones con franjas continuas */}
+              {[1, 2, 3, 4, 5].map((hab, habIndex) => (
+                <div key={hab} className="grid grid-cols-[100px_1fr] gap-x-px mb-px relative">
+                  {/* Nombre habitación */}
+                  <div className="font-semibold text-sm bg-blue-100 text-blue-800 rounded p-2 text-center h-12 flex items-center justify-center">
                     Hab {hab}
                   </div>
                   
-                  {/* Celdas clickeables para reservar */}
-                  {diasAgosto.map(dia => (
-                    <div 
-                      key={dia} 
-                      onClick={() => abrirModalReserva(hab)}
-                      className="h-10 bg-gray-50 border border-gray-100 rounded cursor-pointer hover:bg-blue-50"
-                    />
-                  ))}
+                  {/* Contenedor de días y franjas (posición relativa para calcular anchos) */}
+                  <div className="relative h-12">
+                    {/* Celdas clicables de fondo (grid subyacente para poder reservar) */}
+                    <div className="grid grid-cols-22 gap-px absolute inset-0">
+                      {diasAgosto.map(dia => (
+                        <div 
+                          key={dia} 
+                          onClick={() => abrirModalReserva(hab, dia)}
+                          className="h-12 bg-gray-50 hover:bg-blue-50 border-r border-gray-100 last:border-r-0 cursor-pointer"
+                        />
+                      ))}
+                    </div>
 
-                  {/* Barras de reservas pintadas encima */}
-                  {reservas.filter(r => r.habitacion === hab).map((res, i) => {
-                    const colStart = res.inicio - 8 + 2; // +2 porque la col 1 es el nombre de la hab
-                    const span = res.fin - res.inicio;
-                    if(span <= 0) return null;
-                    return (
-                      <div 
-                        key={i}
-                        className="absolute h-8 top-1 bg-blue-500 text-white text-xs flex items-center justify-center rounded-md shadow-sm overflow-hidden whitespace-nowrap px-1 z-10"
-                        style={{
-                          gridColumnStart: colStart,
-                          gridColumnEnd: colStart + span,
-                        }}
-                      >
-                        {res.nombre}
-                      </div>
-                    );
-                  })}
+                    {/* Franjas de reservas (posicionamiento absoluto sobre el grid) */}
+                    {reservas.filter(r => r.habitacion === hab).map((res, i) => {
+                      // Cálculo de posición y ancho
+                      const colAncho = 100 / diasAgosto.length;
+                      const leftPos = (res.inicio - 8) * colAncho;
+                      const nightsSpan = res.fin - res.inicio;
+                      const width = nightsSpan * colAncho;
+                      
+                      const color = coloresReservas[habIndex % coloresReservas.length];
+
+                      return (
+                        <div 
+                          key={i}
+                          className={`absolute h-8 top-2 ${color} text-white text-xs flex items-center justify-center rounded-md shadow-sm overflow-hidden whitespace-nowrap px-2 z-10 border border-white`}
+                          style={{
+                            left: `${leftPos}%`,
+                            width: `${width}%`,
+                          }}
+                        >
+                          {res.nombre}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -206,7 +221,7 @@ export default function VillaJaveaApp() {
             Ver más detalles y fotos de la casa
           </a>
           <div className="w-full h-64 rounded-lg overflow-hidden border">
-            {/* Embed de Google Maps */}
+            {/* Embed de Google Maps real centrado en Jávea */}
             <iframe 
               width="100%" 
               height="100%" 
@@ -214,7 +229,7 @@ export default function VillaJaveaApp() {
               scrolling="no" 
               marginHeight="0" 
               marginWidth="0" 
-              src="https://maps.google.com/maps?q=Javea&t=&z=13&ie=UTF8&iwloc=&output=embed">
+              src="https://maps.google.com/maps?q=Villa%20La%20Golondrina%20Javea&t=&z=13&ie=UTF8&iwloc=&output=embed">
             </iframe>
           </div>
         </div>
