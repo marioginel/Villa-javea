@@ -17,8 +17,3 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
 export { db };
-Sustituye "TU_API_KEY", "TU_PROJECT_ID", etc., por tus datos reales.
-
-Guarda los cambios (Commit changes).
-
-Paso 3: Actualizar el código principal en
