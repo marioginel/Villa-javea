@@ -1,44 +1,36 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-// Importamos la base de datos que creamos en el paso anterior
 import { db } from './firebase'; 
 import { collection, addDoc, onSnapshot, doc, setDoc } from 'firebase/firestore';
 
 export default function VillaJaveaApp() {
-  // --- ESTADO DE LA APP ---
   const [autenticado, setAutenticado] = useState(false);
   const [password, setPassword] = useState('');
   const [errorAcceso, setErrorAcceso] = useState(false);
 
-  // Datos de reservas y planes
   const [reservas, setReservas] = useState([]);
   const [planes, setPlanes] = useState({});
 
-  // Estados para modales
   const [modalReserva, setModalReserva] = useState(false);
   const [habitacionSeleccionada, setHabitacionSeleccionada] = useState(1);
   const [nuevaReserva, setNuevaReserva] = useState({ nombre: '', inicio: 8, fin: 9 });
 
   const [diaSeleccionado, setDiaSeleccionado] = useState(8);
 
-  // --- CONFIGURACIÓN DE FECHAS (Agosto 2026) ---
-  const diasAgosto = Array.from({ length: 22 }, (_, i) => i + 8); // Del 8 al 29
+  const diasAgosto = Array.from({ length: 22 }, (_, i) => i + 8); 
   const diasSemana = ['S', 'D', 'L', 'M', 'X', 'J', 'V']; 
 
   const coloresReservas = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-sky-500'];
 
-  // --- LEER DATOS EN TIEMPO REAL DESDE FIREBASE ---
   useEffect(() => {
     if (!autenticado) return;
 
-    // Escuchar reservas en tiempo real
     const unsubReservas = onSnapshot(collection(db, "reservas"), (snapshot) => {
       const listaReservas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setReservas(listaReservas);
     });
 
-    // Escuchar planes en tiempo real
     const unsubPlanes = onSnapshot(collection(db, "planes"), (snapshot) => {
       const objetoPlanes = {};
       snapshot.docs.forEach(doc => {
@@ -53,7 +45,6 @@ export default function VillaJaveaApp() {
     };
   }, [autenticado]);
 
-  // --- FUNCIONES DE INTERACCIÓN ---
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === 'Javea2026') {
@@ -67,7 +58,6 @@ export default function VillaJaveaApp() {
   const guardarReserva = async (e) => {
     e.preventDefault();
     try {
-      // Guardamos la reserva directamente en la colección de Firebase
       await addDoc(collection(db, "reservas"), {
         nombre: nuevaReserva.nombre,
         inicio: parseInt(nuevaReserva.inicio),
@@ -87,11 +77,9 @@ export default function VillaJaveaApp() {
       [campo]: valor
     };
     
-    // Actualizamos localmente para que sea instantáneo al escribir
     setPlanes({ ...planes, [diaSeleccionado]: nuevoPlanDia });
 
     try {
-      // Guardamos de forma permanente en Firebase usando el día como ID del documento
       await setDoc(doc(db, "planes", diaSeleccionado.toString()), nuevoPlanDia);
     } catch (error) {
       console.error("Error al guardar plan:", error);
@@ -104,7 +92,6 @@ export default function VillaJaveaApp() {
     setModalReserva(true);
   };
 
-  // --- PANTALLA DE LOGIN ---
   if (!autenticado) {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center p-4">
@@ -128,7 +115,6 @@ export default function VillaJaveaApp() {
     );
   }
 
-  // --- PANTALLA PRINCIPAL ---
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
       <div className="w-full h-56 md:h-80 bg-cover bg-center relative" style={{ backgroundImage: "url('/image_1.png')" }}>
@@ -162,7 +148,8 @@ export default function VillaJaveaApp() {
                   </div>
                   
                   <div className="relative h-12">
-                    <div className="grid grid-cols-22 gap-px absolute inset-0">
+                    {/* AQUÍ ESTÁ LA CORRECCIÓN: grid-cols-[repeat(22,_1fr)] */}
+                    <div className="grid grid-cols-[repeat(22,_1fr)] gap-px absolute inset-0">
                       {diasAgosto.map(dia => (
                         <div 
                           key={dia} 
