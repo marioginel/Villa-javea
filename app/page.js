@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase'; 
-import { collection, addDoc, onSnapshot, doc, setDoc } from 'firebase/firestore';
+// AÑADIDO: deleteDoc para poder borrar cosas de la base de datos
+import { collection, addDoc, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export default function VillaJaveaApp() {
   const [autenticado, setAutenticado] = useState(false);
+  const [esAdmin, setEsAdmin] = useState(false); // AÑADIDO: Estado para saber si es admin
   const [password, setPassword] = useState('');
   const [errorAcceso, setErrorAcceso] = useState(false);
 
@@ -45,10 +47,16 @@ export default function VillaJaveaApp() {
     };
   }, [autenticado]);
 
+  // AÑADIDO: Lógica para diferenciar contraseñas
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === 'Javea2026') {
       setAutenticado(true);
+      setEsAdmin(false);
+      setErrorAcceso(false);
+    } else if (password === 'Adminjavea2026') {
+      setAutenticado(true);
+      setEsAdmin(true);
       setErrorAcceso(false);
     } else {
       setErrorAcceso(true);
@@ -68,6 +76,17 @@ export default function VillaJaveaApp() {
       setNuevaReserva({ nombre: '', inicio: 8, fin: 9 });
     } catch (error) {
       console.error("Error al guardar reserva:", error);
+    }
+  };
+
+  // AÑADIDO: Función para eliminar reserva (solo si eres admin)
+  const eliminarReserva = async (idReserva, nombrePersona) => {
+    if (window.confirm(`¿Estás seguro de que quieres cancelar la reserva de ${nombrePersona}?`)) {
+      try {
+        await deleteDoc(doc(db, "reservas", idReserva));
+      } catch (error) {
+        console.error("Error al borrar reserva:", error);
+      }
     }
   };
 
@@ -118,8 +137,9 @@ export default function VillaJaveaApp() {
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
       <div className="w-full h-56 md:h-80 bg-cover bg-center relative" style={{ backgroundImage: "url('/image_1.png')" }}>
-        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-end p-4">
+        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-end p-4 flex-col justify-end items-start">
           <h1 className="text-white text-3xl font-bold shadow-md">Villa La Golondrina</h1>
+          {esAdmin && <span className="bg-red-600 text-white text-xs px-2 py-1 rounded mt-2 font-bold shadow">MODO ADMIN ACTIVADO</span>}
         </div>
       </div>
 
@@ -148,7 +168,6 @@ export default function VillaJaveaApp() {
                   </div>
                   
                   <div className="relative h-12">
-                    {/* AQUÍ ESTÁ LA CORRECCIÓN: grid-cols-[repeat(22,_1fr)] */}
                     <div className="grid grid-cols-[repeat(22,_1fr)] gap-px absolute inset-0">
                       {diasAgosto.map(dia => (
                         <div 
@@ -170,13 +189,18 @@ export default function VillaJaveaApp() {
                       return (
                         <div 
                           key={res.id || i}
-                          className={`absolute h-8 top-2 ${color} text-white text-xs flex items-center justify-center rounded-md shadow-sm overflow-hidden whitespace-nowrap px-2 z-10 border border-white`}
+                          // AÑADIDO: Si es admin, permite hacer clic para borrar
+                          onClick={() => esAdmin ? eliminarReserva(res.id, res.nombre) : null}
+                          className={`absolute h-8 top-2 ${color} text-white text-xs flex items-center justify-center rounded-md shadow-sm overflow-hidden whitespace-nowrap px-2 z-10 border border-white ${esAdmin ? 'cursor-pointer hover:bg-red-500 hover:opacity-90 transition-colors' : ''}`}
                           style={{
                             left: `${leftPos}%`,
                             width: `${width}%`,
                           }}
+                          title={esAdmin ? "Clic para borrar reserva" : ""}
                         >
                           {res.nombre}
+                          {/* AÑADIDO: Muestra una 'X' si es admin para dar una pista visual */}
+                          {esAdmin && <span className="ml-1 font-bold text-white opacity-80">×</span>}
                         </div>
                       );
                     })}
