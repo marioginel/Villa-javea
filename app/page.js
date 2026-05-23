@@ -1,13 +1,5 @@
-
 "use client";
 
-import React, { useState } from 'react';
-
-export default function VillaJaveaApp() {
-  // --- ESTADO DE LA APP ---
-  const [autenticado, setAutenticado] = useState(false);
-  
-// ... resto de tu código ...
 import React, { useState } from 'react';
 
 export default function VillaJaveaApp() {
@@ -214,7 +206,7 @@ export default function VillaJaveaApp() {
             Ver más detalles y fotos de la casa
           </a>
           <div className="w-full h-64 rounded-lg overflow-hidden border">
-            {/* Usando el embed de Google Maps para Javea como placeholder. Lo ideal es cambiar la query a la dirección exacta si la tienes */}
+            {/* Embed de Google Maps */}
             <iframe 
               width="100%" 
               height="100%" 
@@ -222,7 +214,7 @@ export default function VillaJaveaApp() {
               scrolling="no" 
               marginHeight="0" 
               marginWidth="0" 
-              src="https://maps.google.com/maps?q=Javea,Alicante&t=&z=13&ie=UTF8&iwloc=&output=embed">
+              src="https://maps.google.com/maps?q=Javea&t=&z=13&ie=UTF8&iwloc=&output=embed">
             </iframe>
           </div>
         </div>
