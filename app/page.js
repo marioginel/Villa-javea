@@ -275,7 +275,7 @@ export default function VillaJaveaApp() {
               scrolling="no" 
               marginHeight="0" 
               marginWidth="0" 
-              src="https://maps.google.com/maps?q">
+              src="https://www.google.com/maps/place/La+Golondrina/@38.8050277,0.0497956,28665m/data=!3m1!1e3!4m6!3m5!1s0x129e05006b578ce3:0x540f2b3023582c80!8m2!3d38.7740867!4d0.1045118!16s%2Fg%2F11xkrvg72d?entry=ttu&g_ep=EgoyMDI2MDUyMC4wIKXMDSoASAFQAw%3D%3D">
             </iframe>
           </div>
         </div>
