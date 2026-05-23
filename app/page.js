@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+// Importamos la base de datos que creamos en el paso anterior
+import { db } from './firebase'; 
+import { collection, addDoc, onSnapshot, doc, setDoc } from 'firebase/firestore';
 
 export default function VillaJaveaApp() {
   // --- ESTADO DE LA APP ---
@@ -21,12 +24,36 @@ export default function VillaJaveaApp() {
 
   // --- CONFIGURACIÓN DE FECHAS (Agosto 2026) ---
   const diasAgosto = Array.from({ length: 22 }, (_, i) => i + 8); // Del 8 al 29
-  const diasSemana = ['S', 'D', 'L', 'M', 'X', 'J', 'V']; // 8 Ago 2026 es Sábado
+  const diasSemana = ['S', 'D', 'L', 'M', 'X', 'J', 'V']; 
 
-  // Colores para las reservas
   const coloresReservas = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-sky-500'];
 
-  // --- FUNCIONES ---
+  // --- LEER DATOS EN TIEMPO REAL DESDE FIREBASE ---
+  useEffect(() => {
+    if (!autenticado) return;
+
+    // Escuchar reservas en tiempo real
+    const unsubReservas = onSnapshot(collection(db, "reservas"), (snapshot) => {
+      const listaReservas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setReservas(listaReservas);
+    });
+
+    // Escuchar planes en tiempo real
+    const unsubPlanes = onSnapshot(collection(db, "planes"), (snapshot) => {
+      const objetoPlanes = {};
+      snapshot.docs.forEach(doc => {
+        objetoPlanes[doc.id] = doc.data();
+      });
+      setPlanes(objetoPlanes);
+    });
+
+    return () => {
+      unsubReservas();
+      unsubPlanes();
+    };
+  }, [autenticado]);
+
+  // --- FUNCIONES DE INTERACCIÓN ---
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === 'Javea2026') {
@@ -37,21 +64,38 @@ export default function VillaJaveaApp() {
     }
   };
 
-  const guardarReserva = (e) => {
+  const guardarReserva = async (e) => {
     e.preventDefault();
-    setReservas([...reservas, { ...nuevaReserva, habitacion: habitacionSeleccionada }]);
-    setModalReserva(false);
-    setNuevaReserva({ nombre: '', inicio: 8, fin: 9 });
+    try {
+      // Guardamos la reserva directamente en la colección de Firebase
+      await addDoc(collection(db, "reservas"), {
+        nombre: nuevaReserva.nombre,
+        inicio: parseInt(nuevaReserva.inicio),
+        fin: parseInt(nuevaReserva.fin),
+        habitacion: habitacionSeleccionada
+      });
+      setModalReserva(false);
+      setNuevaReserva({ nombre: '', inicio: 8, fin: 9 });
+    } catch (error) {
+      console.error("Error al guardar reserva:", error);
+    }
   };
 
-  const actualizarPlan = (campo, valor) => {
-    setPlanes({
-      ...planes,
-      [diaSeleccionado]: {
-        ...planes[diaSeleccionado],
-        [campo]: valor
-      }
-    });
+  const actualizarPlan = async (campo, valor) => {
+    const nuevoPlanDia = {
+      ...planes[diaSeleccionado],
+      [campo]: valor
+    };
+    
+    // Actualizamos localmente para que sea instantáneo al escribir
+    setPlanes({ ...planes, [diaSeleccionado]: nuevoPlanDia });
+
+    try {
+      // Guardamos de forma permanente en Firebase usando el día como ID del documento
+      await setDoc(doc(db, "planes", diaSeleccionado.toString()), nuevoPlanDia);
+    } catch (error) {
+      console.error("Error al guardar plan:", error);
+    }
   };
 
   const abrirModalReserva = (habitacion, dia) => {
@@ -87,7 +131,6 @@ export default function VillaJaveaApp() {
   // --- PANTALLA PRINCIPAL ---
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      {/* 1. CABECERA: Foto de la casa (Asegúrate de subir image_1.png a la carpeta public/) */}
       <div className="w-full h-56 md:h-80 bg-cover bg-center relative" style={{ backgroundImage: "url('/image_1.png')" }}>
         <div className="absolute inset-0 bg-black bg-opacity-20 flex items-end p-4">
           <h1 className="text-white text-3xl font-bold shadow-md">Villa La Golondrina</h1>
@@ -96,13 +139,12 @@ export default function VillaJaveaApp() {
 
       <div className="p-4 max-w-6xl mx-auto space-y-8">
         
-        {/* 2. CALENDARIO Y RESERVAS */}
+        {/* CALENDARIO */}
         <div className="bg-white rounded-xl shadow p-4 overflow-hidden">
           <h2 className="text-xl font-bold mb-4 text-gray-800">📅 Calendario de Habitaciones (Agosto)</h2>
           
           <div className="overflow-x-auto pb-4">
             <div className="min-w-[800px]">
-              {/* Cabecera de días */}
               <div className="grid grid-cols-[100px_repeat(22,_1fr)] gap-px mb-1">
                 <div className="font-bold text-sm text-gray-500 flex items-end pb-2">Habitación</div>
                 {diasAgosto.map((dia, index) => (
@@ -113,17 +155,13 @@ export default function VillaJaveaApp() {
                 ))}
               </div>
 
-              {/* Filas de habitaciones con franjas continuas */}
               {[1, 2, 3, 4, 5].map((hab, habIndex) => (
                 <div key={hab} className="grid grid-cols-[100px_1fr] gap-x-px mb-px relative">
-                  {/* Nombre habitación */}
                   <div className="font-semibold text-sm bg-blue-100 text-blue-800 rounded p-2 text-center h-12 flex items-center justify-center">
                     Hab {hab}
                   </div>
                   
-                  {/* Contenedor de días y franjas (posición relativa para calcular anchos) */}
                   <div className="relative h-12">
-                    {/* Celdas clicables de fondo (grid subyacente para poder reservar) */}
                     <div className="grid grid-cols-22 gap-px absolute inset-0">
                       {diasAgosto.map(dia => (
                         <div 
@@ -134,9 +172,7 @@ export default function VillaJaveaApp() {
                       ))}
                     </div>
 
-                    {/* Franjas de reservas (posicionamiento absoluto sobre el grid) */}
                     {reservas.filter(r => r.habitacion === hab).map((res, i) => {
-                      // Cálculo de posición y ancho
                       const colAncho = 100 / diasAgosto.length;
                       const leftPos = (res.inicio - 8) * colAncho;
                       const nightsSpan = res.fin - res.inicio;
@@ -146,7 +182,7 @@ export default function VillaJaveaApp() {
 
                       return (
                         <div 
-                          key={i}
+                          key={res.id || i}
                           className={`absolute h-8 top-2 ${color} text-white text-xs flex items-center justify-center rounded-md shadow-sm overflow-hidden whitespace-nowrap px-2 z-10 border border-white`}
                           style={{
                             left: `${leftPos}%`,
@@ -164,9 +200,9 @@ export default function VillaJaveaApp() {
           </div>
         </div>
 
-        {/* 3. PLANING DIARIO */}
+        {/* PLANNING DIARIO */}
         <div className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">🍽️ Planning Diario</h2>
+          <h2 className="text-xl font-bold mb-4 text-gray-800">🍽️ Planning Diario (Día {diaSeleccionado})</h2>
           
           <div className="flex space-x-2 overflow-x-auto pb-2 mb-4">
             {diasAgosto.map(dia => (
@@ -214,14 +250,13 @@ export default function VillaJaveaApp() {
           </div>
         </div>
 
-        {/* 4. FOOTER: Mapa y Enlace */}
+        {/* UBICACIÓN */}
         <div className="bg-white rounded-xl shadow p-4 space-y-4">
           <h2 className="text-xl font-bold text-gray-800">📍 Ubicación e Información</h2>
           <a href="https://alojamientos.marhenhomes.com/alquiler/villa-javea-villa-la-golondrina-by-marhen-homes-559597.html" target="_blank" rel="noreferrer" className="block w-full text-center bg-gray-800 text-white py-3 rounded-lg font-semibold hover:bg-gray-700">
             Ver más detalles y fotos de la casa
           </a>
           <div className="w-full h-64 rounded-lg overflow-hidden border">
-            {/* Embed de Google Maps real centrado en Jávea */}
             <iframe 
               width="100%" 
               height="100%" 
@@ -229,13 +264,13 @@ export default function VillaJaveaApp() {
               scrolling="no" 
               marginHeight="0" 
               marginWidth="0" 
-              src="https://maps.google.com/maps?q=Villa%20La%20Golondrina%20Javea&t=&z=13&ie=UTF8&iwloc=&output=embed">
+              src="https://maps.google.com/maps?q">
             </iframe>
           </div>
         </div>
       </div>
 
-      {/* --- MODAL DE RESERVA --- */}
+      {/* MODAL RESERVA */}
       {modalReserva && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl">
