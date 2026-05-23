@@ -1,3 +1,13 @@
+
+"use client";
+
+import React, { useState } from 'react';
+
+export default function VillaJaveaApp() {
+  // --- ESTADO DE LA APP ---
+  const [autenticado, setAutenticado] = useState(false);
+  
+// ... resto de tu código ...
 import React, { useState } from 'react';
 
 export default function VillaJaveaApp() {
