@@ -305,7 +305,7 @@ export default function VillaJaveaApp() {
               scrolling="no" 
               marginHeight="0" 
               marginWidth="0" 
-              src="https://maps.google.com/maps?q=Javea,+Alicante,+Spain&t=&z=13&ie=UTF8&iwloc=&output=embed">
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d48347.245678391046!2d0.1517779687406707!3d38.78100487232023!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x129e05006b578ce3%3A0x540f2b3023582c80!2sLa%20Golondrina!5e0!3m2!1ses!2ses!4v1779708171532!5m2!1ses!2ses">
             </iframe>
           </div>
         </div>
