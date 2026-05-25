@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase'; 
-// AÑADIDO: deleteDoc para poder borrar cosas de la base de datos
 import { collection, addDoc, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export default function VillaJaveaApp() {
   const [autenticado, setAutenticado] = useState(false);
-  const [esAdmin, setEsAdmin] = useState(false); // AÑADIDO: Estado para saber si es admin
+  const [esAdmin, setEsAdmin] = useState(false); 
   const [password, setPassword] = useState('');
   const [errorAcceso, setErrorAcceso] = useState(false);
 
@@ -25,12 +24,15 @@ export default function VillaJaveaApp() {
 
   const coloresReservas = ['bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-purple-500', 'bg-sky-500'];
 
+  // Cargar datos de Firebase
   useEffect(() => {
     if (!autenticado) return;
 
     const unsubReservas = onSnapshot(collection(db, "reservas"), (snapshot) => {
       const listaReservas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setReservas(listaReservas);
+    }, (error) => {
+      alert("Error al leer de Firebase: " + error.message);
     });
 
     const unsubPlanes = onSnapshot(collection(db, "planes"), (snapshot) => {
@@ -47,7 +49,6 @@ export default function VillaJaveaApp() {
     };
   }, [autenticado]);
 
-  // AÑADIDO: Lógica para diferenciar contraseñas
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === 'Javea2026') {
@@ -63,29 +64,51 @@ export default function VillaJaveaApp() {
     }
   };
 
+  // RESOLUCIÓN PROBLEMA 2: Control de solapamiento de fechas
   const guardarReserva = async (e) => {
     e.preventDefault();
+    
+    const inicioNum = parseInt(nuevaReserva.inicio);
+    const finNum = parseInt(nuevaReserva.fin);
+
+    if (inicioNum >= finNum) {
+      alert("⚠️ El día de salida debe ser posterior al día de entrada.");
+      return;
+    }
+
+    // Validar si ya hay alguien en esos días para esa habitación
+    // Permite coincidir exactamente si el día de entrada de uno es el de salida de otro
+    const habitacionOcupada = reservas.some(r => {
+      if (r.habitacion !== habitacionSeleccionada) return false;
+      return inicioNum < parseInt(r.fin) && finNum > parseInt(r.inicio);
+    });
+
+    if (habitacionOcupada) {
+      alert("⚠️ La habitación está ocupada para las fechas seleccionadas.");
+      return;
+    }
+
     try {
       await addDoc(collection(db, "reservas"), {
         nombre: nuevaReserva.nombre,
-        inicio: parseInt(nuevaReserva.inicio),
-        fin: parseInt(nuevaReserva.fin),
+        inicio: inicioNum,
+        fin: finNum,
         habitacion: habitacionSeleccionada
       });
       setModalReserva(false);
       setNuevaReserva({ nombre: '', inicio: 8, fin: 9 });
     } catch (error) {
-      console.error("Error al guardar reserva:", error);
+      // RESOLUCIÓN PROBLEMA 3: Alerta si Firebase rechaza la escritura
+      alert("Error crítico de Firebase al guardar: " + error.message + "\nRevisa las Reglas de Firestore.");
     }
   };
 
-  // AÑADIDO: Función para eliminar reserva (solo si eres admin)
   const eliminarReserva = async (idReserva, nombrePersona) => {
     if (window.confirm(`¿Estás seguro de que quieres cancelar la reserva de ${nombrePersona}?`)) {
       try {
         await deleteDoc(doc(db, "reservas", idReserva));
       } catch (error) {
-        console.error("Error al borrar reserva:", error);
+        alert("No se pudo borrar: " + error.message);
       }
     }
   };
@@ -137,7 +160,7 @@ export default function VillaJaveaApp() {
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
       <div className="w-full h-56 md:h-80 bg-cover bg-center relative" style={{ backgroundImage: "url('/image_1.png')" }}>
-        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-end p-4 flex-col justify-end items-start">
+        <div className="absolute inset-0 bg-black bg-opacity-20 flex p-4 flex-col justify-end items-start">
           <h1 className="text-white text-3xl font-bold shadow-md">Villa La Golondrina</h1>
           {esAdmin && <span className="bg-red-600 text-white text-xs px-2 py-1 rounded mt-2 font-bold shadow">MODO ADMIN ACTIVADO</span>}
         </div>
@@ -145,12 +168,14 @@ export default function VillaJaveaApp() {
 
       <div className="p-4 max-w-6xl mx-auto space-y-8">
         
-        {/* CALENDARIO */}
+        {/* CALENDARIO REFORMADO (PROBLEMA 1) */}
         <div className="bg-white rounded-xl shadow p-4 overflow-hidden">
           <h2 className="text-xl font-bold mb-4 text-gray-800">📅 Calendario de Habitaciones (Agosto)</h2>
           
           <div className="overflow-x-auto pb-4">
-            <div className="min-w-[800px]">
+            <div className="min-w-[900px]">
+              
+              {/* Cabecera de días */}
               <div className="grid grid-cols-[100px_repeat(22,_1fr)] gap-px mb-1">
                 <div className="font-bold text-sm text-gray-500 flex items-end pb-2">Habitación</div>
                 {diasAgosto.map((dia, index) => (
@@ -161,49 +186,54 @@ export default function VillaJaveaApp() {
                 ))}
               </div>
 
+              {/* Filas de habitaciones */}
               {[1, 2, 3, 4, 5].map((hab, habIndex) => (
-                <div key={hab} className="grid grid-cols-[100px_1fr] gap-x-px mb-px relative">
+                <div key={hab} className="grid grid-cols-[100px_1fr] gap-x-px mb-1 items-center">
+                  
+                  {/* Nombre Habitación */}
                   <div className="font-semibold text-sm bg-blue-100 text-blue-800 rounded p-2 text-center h-12 flex items-center justify-center">
                     Hab {hab}
                   </div>
                   
-                  <div className="relative h-12">
-                    <div className="grid grid-cols-[repeat(22,_1fr)] gap-px absolute inset-0">
+                  {/* Contenedor de Capas superpuestas */}
+                  <div className="relative h-12 bg-gray-50 rounded overflow-hidden">
+                    
+                    {/* Capa de botones de fondo */}
+                    <div className="grid grid-cols-[repeat(22,_1fr)] absolute inset-0">
                       {diasAgosto.map(dia => (
                         <div 
                           key={dia} 
                           onClick={() => abrirModalReserva(hab, dia)}
-                          className="h-12 bg-gray-50 hover:bg-blue-50 border-r border-gray-100 last:border-r-0 cursor-pointer"
+                          className="h-full border-r border-gray-200/50 last:border-0 hover:bg-blue-50/50 cursor-pointer transition-colors"
                         />
                       ))}
                     </div>
 
-                    {reservas.filter(r => r.habitacion === hab).map((res, i) => {
-                      const colAncho = 100 / diasAgosto.length;
-                      const leftPos = (res.inicio - 8) * colAncho;
-                      const nightsSpan = res.fin - res.inicio;
-                      const width = nightsSpan * colAncho;
-                      
-                      const color = coloresReservas[habIndex % coloresReservas.length];
+                    {/* Capa de Reservas Continuas Alineadas por Rejilla */}
+                    <div className="grid grid-cols-[repeat(22,_1fr)] absolute inset-0 pointer-events-none items-center px-px">
+                      {reservas.filter(r => r.habitacion === hab).map((res, i) => {
+                        // Cálculo exacto de las columnas de la rejilla
+                        const startTrack = res.inicio - 8 + 1;
+                        const endTrack = res.fin - 8 + 1;
+                        const color = coloresReservas[habIndex % coloresReservas.length];
 
-                      return (
-                        <div 
-                          key={res.id || i}
-                          // AÑADIDO: Si es admin, permite hacer clic para borrar
-                          onClick={() => esAdmin ? eliminarReserva(res.id, res.nombre) : null}
-                          className={`absolute h-8 top-2 ${color} text-white text-xs flex items-center justify-center rounded-md shadow-sm overflow-hidden whitespace-nowrap px-2 z-10 border border-white ${esAdmin ? 'cursor-pointer hover:bg-red-500 hover:opacity-90 transition-colors' : ''}`}
-                          style={{
-                            left: `${leftPos}%`,
-                            width: `${width}%`,
-                          }}
-                          title={esAdmin ? "Clic para borrar reserva" : ""}
-                        >
-                          {res.nombre}
-                          {/* AÑADIDO: Muestra una 'X' si es admin para dar una pista visual */}
-                          {esAdmin && <span className="ml-1 font-bold text-white opacity-80">×</span>}
-                        </div>
-                      );
-                    })}
+                        return (
+                          <div 
+                            key={res.id || i}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (esAdmin) eliminarReserva(res.id, res.nombre);
+                            }}
+                            style={{ gridColumnStart: startTrack, gridColumnEnd: endTrack }}
+                            className={`pointer-events-auto h-8 ${color} text-white text-xs flex items-center justify-center rounded shadow-sm px-2 border border-white font-semibold mx-0.5 relative overflow-hidden ${esAdmin ? 'cursor-pointer hover:bg-red-600 transition-colors' : ''}`}
+                            title={esAdmin ? "Clic para eliminar" : `${res.nombre}: del ${res.inicio} al ${res.fin}`}
+                          >
+                            <span className="truncate">{res.nombre} {esAdmin && '×'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
                   </div>
                 </div>
               ))}
@@ -267,7 +297,7 @@ export default function VillaJaveaApp() {
           <a href="https://alojamientos.marhenhomes.com/alquiler/villa-javea-villa-la-golondrina-by-marhen-homes-559597.html" target="_blank" rel="noreferrer" className="block w-full text-center bg-gray-800 text-white py-3 rounded-lg font-semibold hover:bg-gray-700">
             Ver más detalles y fotos de la casa
           </a>
-         <div className="w-full h-64 rounded-lg overflow-hidden border shadow-inner">
+          <div className="w-full h-64 rounded-lg overflow-hidden border shadow-inner">
             <iframe 
               width="100%" 
               height="100%" 
@@ -275,7 +305,7 @@ export default function VillaJaveaApp() {
               scrolling="no" 
               marginHeight="0" 
               marginWidth="0" 
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d552.4245271954449!2d0.10455583343503189!3d38.77435801022694!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x129e05006b578ce3%3A0x540f2b3023582c80!2sLa%20Golondrina!5e1!3m2!1ses!2ses!4v1779548144590!5m2!1ses!2ses">
+              src="https://maps.google.com/maps?q=Javea,+Alicante,+Spain&t=&z=13&ie=UTF8&iwloc=&output=embed">
             </iframe>
           </div>
         </div>
